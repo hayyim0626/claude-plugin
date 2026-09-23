@@ -23,8 +23,9 @@ SINCE_TS="$SINCE 00:00"; UNTIL_TS="$UNTIL 23:59:59"
 
 echo "##### RANGE $SINCE ~ $UNTIL"
 
-jq -r '.repos[] | "\(.path)\t\(.project)"' "$CFG" | while IFS=$'\t' read -r path project; do
+jq -r '.repos[] | "\(.path)\t\(.project)\t\(.doc_dirs // [] | join(" "))"' "$CFG" | while IFS=$'\t' read -r path project repo_docs; do
   dir="${path/#\~/$HOME}"
+  docs="${repo_docs:-$DOC_DIRS}"
   echo
   echo "##### REPO $project ($path)"
   if [ ! -d "$dir/.git" ]; then echo "MISSING"; continue; fi
@@ -36,11 +37,11 @@ jq -r '.repos[] | "\(.path)\t\(.project)"' "$CFG" | while IFS=$'\t' read -r path
   git log --all --author="$AUTHOR" --since="$SINCE_TS" --until="$UNTIL_TS" \
     --no-merges --name-only --format="" 2>/dev/null \
     | awk -F/ 'NF>1{print $1"/"$2} NF==1{print $1}' | sort | uniq -c | sort -rn | head -15
-  if [ -n "$DOC_DIRS" ]; then
+  if [ -n "$docs" ]; then
     echo "=== DOCS ==="
     # shellcheck disable=SC2086
     git -c core.quotepath=false log --all --author="$AUTHOR" --since="$SINCE_TS" --until="$UNTIL_TS" \
-      --no-merges --name-status --format="" -- $DOC_DIRS 2>/dev/null | sort -u
+      --no-merges --name-status --format="" -- $docs 2>/dev/null | sort -u
   fi
   if [ "$WITH_STATUS" = 1 ]; then
     echo "=== STATUS ==="
