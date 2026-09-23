@@ -1,7 +1,7 @@
 {
   "name": "worklog",
   "displayName": "Worklog",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "개인 작업 기록 자동화 — git·문서·Claude 세션에서 한 일과 판단을 모아 daily/weekly/monthly/projects 로 기록",
   "author": {
     "name": "hayyim0626",
