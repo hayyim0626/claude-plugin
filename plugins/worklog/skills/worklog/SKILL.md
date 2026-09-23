@@ -75,7 +75,7 @@ python3 -c "import datetime as d; x=d.date.fromisoformat('$D'); m=x-d.timedelta(
 2. 커밋·문서·세션이 전부 비어 있으면 **파일을 만들지 않고** "활동 없음"만 알린다.
 3. ADR·PRD 변경이 있으면 판단 추출 규칙 1 대로 파일을 읽는다.
 4. `daily/YYYY/MM/YYYY-MM-DD.md` 를 아래 형식으로 쓴다. 한 일은 커밋 하나하나가 아니라 **기능·주제 단위**로 묶는다(PRD·report 제목이 출발점). 잔손질 fix 는 상위 작업에 흡수. 하루 3~7항목.
-5. `projects` 모드를 같은 날짜 범위로 이어서 수행한다(ADR·PRD 추가가 있을 때만).
+5. `projects` 모드는 자동으로 부르지 않는다(수동 실행). 근거 절에 ADR·PRD 추가가 있으면 마지막 출력에 "projects 실행 권장: ADR-00NN …" 한 줄을 남긴다.
 
 ```markdown
 # 2026-09-08 (화)
@@ -114,10 +114,10 @@ python3 -c "import datetime as d; x=d.date.fromisoformat('$D'); m=x-d.timedelta(
 
 ### weekly [YYYY-MM-DD | this] (기본 지난주)
 
-기간: 인자 없음 → 직전 월~일. 날짜 → 그 날짜가 속한 월~일. `this` → 이번 주 월~오늘.
+기간: 인자 없음 → 직전 월~일. 날짜 → 그 날짜가 속한 월~일. `this` → 이번 주 월~오늘(금요일 저녁 스케줄이 이걸 쓴다). 파일명은 어느 경우든 그 주의 ISO 주차.
 
 1. 그 주의 `daily/` 파일을 모두 읽는다(Glob). 이것이 1차 재료다.
-2. `collect.sh 월 일 --no-sessions` 로 daily 가 놓친 커밋·문서를 보정한다. daily 가 하나도 없으면 세션까지 포함해 수집하고, 판단 하이라이트는 판단 추출 규칙(문서·커밋 이유)으로 직접 뽑는다. 커밋·문서·세션이 전부 비어 있으면 파일을 만들지 않는다.
+2. daily 가 없는 날짜 구간은 `collect.sh 시작 끝`(세션 포함)으로 직접 수집한다 — `this` 로 돌리는 금요일은 금요일 하루가 여기 해당한다. daily 가 있는 구간은 `collect.sh 월 일 --no-sessions` 로 커밋·문서만 보정한다. daily 가 하나도 없으면 판단 하이라이트는 판단 추출 규칙(문서·커밋 이유)으로 직접 뽑는다. 커밋·문서·세션이 전부 비어 있으면 파일을 만들지 않는다. 이미 파일이 있으면 덮어쓴다(금요일 판을 월요일 catchup 이 다시 만들지는 않는다 — catchup 은 없는 파일만 만든다).
 3. 작업 단위로 묶는다 — **3~7개**. 회의·잔손질·다른 사람 커밋은 뺀다. 코드 없어도 결정·검증·문의는 넣는다. 8개가 넘으면 상위 주제로 다시 묶는다. 프로젝트가 둘 이상이면 프로젝트 소제목으로 나눈다.
 4. 제목 바로 아래에 **한 줄 요약**을 인용문으로 둔다 — 종이 캘린더에 그대로 옮겨 적는 줄이다. 항목마다 `{무엇}({핵심 수단·범위})` 꼴 명사구, 쉼표+공백으로 잇고 마침표 없음, 프로젝트명은 구분이 필요할 때만 앞에. 예: `PADO XRPL 병행 레그 구축(PermissionedDEX), 토스증권 국내주식 실시간 가격 API 연동, RFQ 화면·거래 벤치마크 아티팩트 작성, VASP 규제 대응을 위한 Turnkey 기술검증`
 5. `weekly/YYYY/YYYY-Www.md`:
@@ -153,7 +153,7 @@ python3 -c "import datetime as d; x=d.date.fromisoformat('$D'); m=x-d.timedelta(
 
 ### monthly [YYYY-MM] (기본 지난달)
 
-git 을 다시 훑지 않는다. 그 달의 `weekly/` 파일과 `projects/*.md` 에서 그 달 날짜의 항목을 읽어 `monthly/YYYY/YYYY-MM.md` 를 쓴다.
+git 을 다시 훑지 않는다. 그 달의 `weekly/` 파일(주가 두 달에 걸치면 그 달 날짜의 항목만)과 `projects/*.md` 에서 그 달 날짜의 항목을 읽어 `monthly/YYYY/YYYY-MM.md` 를 쓴다. weekly 가 아직 없는 날짜(마지막 영업일 저녁에 이번 달을 쓸 때의 마지막 주)는 그 구간의 `daily/` 로 보충한다. `projects/` 에 그 달 항목이 없으면 "이 달의 결정"은 weekly 의 판단 하이라이트에서 고른다.
 
 ```markdown
 # 2026-06

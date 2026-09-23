@@ -29,7 +29,15 @@ git 이력·문서(ADR·PRD·report)·Claude 세션에서 "한 일"과 "내린 �
 bash ~/.claude/plugins/.../worklog/scripts/install-launchd.sh   # 또는 클론한 plugins/worklog/scripts/install-launchd.sh
 ```
 
-매일 `config.schedule`(기본 19:00)과 로그인 시 `run.sh` 가 돈다: `claude -p "/worklog:worklog catchup --headless"` → `redact-check.sh`(URL·키·이메일 패턴) → 커밋·푸시. 맥북이 꺼져 있던 날은 다음 실행 때 최대 14일까지 따라잡는다. 로그는 `~/Library/Logs/worklog.log`. 제거는 `install-launchd.sh --uninstall`.
+LaunchAgent 세 개가 등록된다(`config.schedule` 로 시각 조정):
+
+| 잡 | 기본 시각 | 하는 일 |
+|---|---|---|
+| daily | 매일 09:30 + 로그인 시 | `catchup` — 어제까지 빠진 daily(최대 14일), 끝난 주·달의 빠진 weekly·monthly |
+| weekly | 금 18:00 | 이번 주(월~금) weekly |
+| monthly | 평일 18:00 | 그날이 이 달의 마지막 영업일이면 이번 달 monthly |
+
+각 잡은 `claude -p "/worklog:worklog … --headless"` → `redact-check.sh`(URL·키·이메일 패턴) → 커밋·푸시 → macOS 알림. `projects`(결정 로그)는 자동으로 돌지 않는다 — `/worklog:worklog projects SINCE UNTIL` 로 직접 실행. 로그는 `~/Library/Logs/worklog.log`. 제거는 `install-launchd.sh --uninstall`.
 
 plist 는 설치 시점의 `run.sh` 경로를 박아 넣으므로, 마켓플레이스 설치본이 아니라 **클론한 디렉토리**에서 설치하는 편이 플러그인 업데이트에 안전하다.
 

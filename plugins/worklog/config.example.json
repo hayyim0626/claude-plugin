@@ -1,30 +1,78 @@
 {
   "git_author": "jacob",
   "calendar": "me@example.com",
-  "allowed_emails": ["me@example.com", "me@personal.com"],
-  "repos": [
-    { "path": "~/project-a", "project": "Project A" },
-    { "path": "~/project-b", "project": "Project B" },
-    { "path": "~/claude-plugin", "project": "Tooling" }
+  "allowed_emails": [
+    "me@example.com",
+    "me@personal.com"
   ],
-  "doc_dirs": ["docs/adr", "docs/engineering-prd", "docs/engineering-report", "docs/research"],
+  "repos": [
+    {
+      "path": "~/project-a",
+      "project": "Project A"
+    },
+    {
+      "path": "~/project-b",
+      "project": "Project B"
+    },
+    {
+      "path": "~/claude-plugin",
+      "project": "Tooling"
+    }
+  ],
+  "doc_dirs": [
+    "docs/adr",
+    "docs/engineering-prd",
+    "docs/engineering-report",
+    "docs/research"
+  ],
   "sessions": {
     "enabled": true,
     "per_session_limit": 60,
     "extra_projects": [
-      { "dir_prefix": "-Users-me--claude", "project": "Tooling" }
+      {
+        "dir_prefix": "-Users-me--claude",
+        "project": "Tooling"
+      }
     ]
   },
-  "schedule": { "hour": 19, "minute": 0 },
+  "schedule": {
+    "daily": {
+      "hour": 9,
+      "minute": 30
+    },
+    "weekly": {
+      "weekday": 5,
+      "hour": 18,
+      "minute": 0
+    },
+    "monthly": {
+      "hour": 18,
+      "minute": 0
+    }
+  },
   "daily_brief": {
     "path_mapping": [
-      { "paths": ["backend/", "frontend/"], "project": "Project A" }
+      {
+        "paths": [
+          "backend/",
+          "frontend/"
+        ],
+        "project": "Project A"
+      }
     ],
     "keyword_mapping": [
-      { "keywords": ["token", "figma"], "project": "Project B" }
+      {
+        "keywords": [
+          "token",
+          "figma"
+        ],
+        "project": "Project B"
+      }
     ],
     "todo_sources": [],
-    "exclude_events": ["BridgeTalk"],
+    "exclude_events": [
+      "BridgeTalk"
+    ],
     "slack": {
       "channel_id": "C00000000",
       "channel_name": "team-channel",
