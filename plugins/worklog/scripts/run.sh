@@ -52,9 +52,15 @@ cd "$WORKLOG_DIR" || exit 1
 git pull --rebase -q 2>>"$LOG" || log "warn: pull failed"
 log "start $LABEL"
 "$CLAUDE_BIN" -p "$PROMPT" --permission-mode bypassPermissions --output-format text >> "$LOG" 2>&1
-log "claude exit=$?"
+RC=$?
+log "claude exit=$RC"
+if [ "$RC" -ne 0 ]; then
+  if tail -30 "$LOG" | grep -qi "authenticate\|OAuth"; then notify "Claude 인증 만료 — 터미널에서 claude 를 열어 /login 하세요"; else notify "worklog 실행 실패 (exit $RC) — worklog.log 확인"; fi
+  exit "$RC"
+fi
 
-git add -A
+# 기록 디렉토리와 상태만 스테이징 — 워킹 트리의 다른 변경(문서·다이어그램)은 건드리지 않는다
+git add -- daily weekly monthly projects .state/last_checked 2>/dev/null
 if git diff --cached --quiet; then log "nothing to commit"; exit 0; fi
 if ! "$PLUGIN_ROOT/scripts/redact-check.sh" >> "$LOG" 2>&1; then
   git reset -q
