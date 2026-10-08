@@ -15,7 +15,7 @@ git 이력·문서(ADR·PRD·report)·Claude 세션에서 "한 일"과 "내린 �
 |---|---|
 | `/worklog:worklog daily\|weekly\|monthly\|projects\|catchup` | 기록 생성. `catchup` 은 마지막 기록 이후 빈 날·주·달을 채운다 |
 | `/worklog:daily-brief` | 어제·오늘 요약 + 캘린더 → Slack 데일리 스레드 |
-| `/worklog:weekly-brief` | 주간 한 줄 요약 → 캘린더 종일 이벤트 또는 worklog 기록 |
+| `/worklog:weekly-brief` | 그 주 weekly 기록 → Confluence 주간 보고 불릿 + 캘린더용 한 줄 요약 (출력만, 파일 없음) |
 
 ### 설정
 

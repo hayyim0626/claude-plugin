@@ -1,106 +1,57 @@
 ---
 name: weekly-brief
-description: 지난 한 주 동안 내가 실제로 한 일을 여러 저장소에 걸쳐 모아 한 줄 요약으로 정리한다(보고용이 아니라 기록용). 트리거 - /worklog:weekly-brief, "주간 브리프", "지난주에 뭐 했지".
+description: 그 주의 worklog weekly 기록을 공유용으로 바꾼다 — Confluence 주간 보고 형식(프로젝트 → 작업 → 세부 불릿)과 종이 캘린더용 한 줄 요약. 트리거 - /worklog:weekly-brief, "주간 브리프", "컨플루언스 주간", "지난주에 뭐 했지".
+argument-hint: [YYYY-MM-DD | this]
+allowed-tools: Bash, Read, Glob, AskUserQuestion
 ---
 
-# Weekly Brief — 주간 작업 정리
+# Weekly Brief — 주간 기록을 공유용으로
 
-지난 한 주(월~일)에 **내가 실제로 한 일**을 여러 저장소의 git 이력·문서·Claude 세션에서 모아, 캘린더에 수기로 적는 형식의 한 줄 요약으로 만든다. 회의 참석은 넣지 않는다. 목적은 보고가 아니라 "내가 무엇을 진행했는지"를 스스로 아는 것이다.
+`/worklog:worklog weekly` 가 만든 `weekly/YYYY/YYYY-Www.md` 를 읽어 두 가지 형식으로 바꿔 **대화에 출력**한다. 파일을 만들지도 커밋하지도 않는다 — Confluence 와 캘린더가 정본이고 같은 내용이 weekly 파일에 이미 있다.
 
-## 사용 방법
-
-```
-/worklog:weekly-brief            # 지난주(직전 월~일)
-/worklog:weekly-brief 2026-09-10 # 그 날짜가 속한 주
-/worklog:weekly-brief this       # 이번 주(월~오늘)
-```
-
-## 설정 — `$WORKLOG_DIR/config.json`
-
-worklog 플러그인 공통 설정 한 파일(`WORKLOG_DIR` 기본값 `~/worklog`). 이 스킬이 쓰는 키:
-
-| 키 | 의미 |
-|---|---|
-| `git_author` | `git log --author` 매칭 문자열 |
-| `week_start` | `monday` 고정(월~일) |
-| `repos[]` | `{path, project}` — 훑을 저장소와 표시 이름. `~` 허용. 없는 경로는 건너뛰고 결과에 "없음"으로 표시 |
-| `doc_dirs[]` | 각 저장소에서 그 주에 추가·수정된 문서를 볼 디렉토리(ADR·PRD·report·research). 제목이 곧 작업 이름이라 가장 좋은 신호 |
-| `sessions.enabled` | `true`면 `~/.claude/projects/` 에서 그 주에 활동한 세션의 사용자 메시지를 힌트로 모은다 — 커밋이 없는 조사·검증 작업을 잡는 용도. `sessions.per_session_limit` 로 세션당 상한 |
-| `calendar` | 마지막 단계에서 캘린더에 적어 줄 때 쓰는 캘린더 ID(선택) |
-
-설정 파일이 없으면 `${CLAUDE_PLUGIN_ROOT}/config.example.json` 을 복사해 채우라고 안내하고 종료한다.
-
-## 수행 절차
-
-### Step 1: 기간 계산
-
-- 인자 없음: 오늘 기준 직전 월요일 00:00 ~ 일요일 23:59.
-- 날짜 인자: 그 날짜가 속한 월~일.
-- `this`: 이번 주 월요일 ~ 오늘.
-- 결과에 기간을 `2026-09-07(월) ~ 09-13(일)` 형식으로 표시한다.
-
-### Step 2: 수집
-
-공용 스크립트 한 번으로 모든 저장소와 세션을 모은다:
-
-```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/collect.sh {월} {일} [--status]
-```
-
-출력은 저장소별 `##### REPO {project}` 블록(커밋·손댄 디렉토리 분포·문서 변경·(옵션) 미커밋 상태)과 `##### SESSIONS` 블록(프로젝트별 세션의 사용자 메시지, 날짜 붙음)이다. `--status` 는 `this` 일 때만 붙인다. 출력은 길 수 있으니 저장소별로 요약해 두고 원문은 버린다. 없는 저장소는 `MISSING` 으로 찍힌다.
-
-저장소가 분리·미러 관계라 **같은 커밋(제목·날짜 동일, 해시만 다름)이 두 저장소에 보이면 하나로 센다**(예: pado 는 2026-09-11 canton-poc 에서 분리돼 그 이전 커밋이 양쪽에 있다).
-
-세션 힌트는 **커밋에 없는 일**(조사·검증·외부 문의·설계)을 찾는 보조 신호다. 커밋과 겹치면 버린다. 세션의 디렉토리와 대화 내용이 가리키는 프로젝트가 다르면 내용을 따른다.
-
-### Step 3: 작업 단위로 묶기
-
-커밋 하나하나가 아니라 **"무엇을 만들었나 / 무엇을 검증했나"** 단위로 묶는다. 기준:
-
-1. 같은 기능·주제의 커밋·문서·세션을 하나로. ADR·PRD 제목이 있으면 그 제목이 묶음 이름의 출발점이다.
-2. 이름은 `{무엇}({핵심 수단·범위})` 꼴의 짧은 명사구. 예: `PADO XRPL 레일 구축(PermissionedDEX)`, `토스증권 실시간 가격 API 연동(국내주식)`, `Turnkey 기술검증(VASP 규제 대응)`.
-3. **뺀다**: 회의·데일리·리뷰 참석, 단순 문구 수정·리네임·의존성 업데이트 같은 잔손질(큰 작업의 일부면 그 작업에 흡수), 다른 사람 커밋.
-4. **넣는다**: 코드가 없어도 결정·검증·문의·배포 준비처럼 시간을 쓴 일(ADR·research·세션 힌트로 잡히는 것). 배포·인프라 요청(RDO)도 작업이다.
-5. 한 주에 3~7개가 적당하다. 8개가 넘으면 상위 주제로 다시 묶는다.
-6. 저장소 이름은 항목에 붙이지 않는다 — 프로젝트 이름(`PADO`, `Canton`)이 필요하면 항목 앞에 자연스럽게 넣는다.
-
-### Step 4: 출력
-
-**한 줄 요약**을 먼저, 그 아래 근거를 접어서 보여 준다. 한 줄 요약이 캘린더에 그대로 들어가는 결과물이다.
+## 사용
 
 ```
-## 2026-09-07(월) ~ 09-13(일)
+/worklog:weekly-brief            # 지난주
+/worklog:weekly-brief 2026-10-06 # 그 날짜가 속한 주
+/worklog:weekly-brief this       # 이번 주
+```
 
-PADO XRPL 레일 구축(PermissionedDEX), 토스증권 실시간 가격 API 연동(국내주식), RFQ 화면·거래 벤치마크, Turnkey 기술검증(VASP 규제 대응)
+## 절차
 
-### 근거
-- PADO XRPL 레일 구축(PermissionedDEX) — pado 커밋 14개 (rails/xrpl, gateway), ADR-0041·0047, report 09-09
-- 토스증권 실시간 가격 API 연동(국내주식) — pado 커밋 6개 (market-stream), ADR-0043
-- RFQ 화면·거래 벤치마크 — 세션 힌트(pado 09-10 "RFQ 화면 벤치마크"), 커밋 없음
-- Turnkey 기술검증(VASP 규제 대응) — wallet-project research 09-11
-- 제외: 회의 5건, 문구 수정 커밋 3개(위 작업에 흡수)
-- 저장소 없음/활동 없음: canton-poc(활동 없음)
+1. 기간 계산: 인자 없음 → 직전 월~일, 날짜 → 그 주, `this` → 이번 주. ISO 주차로 `$WORKLOG_DIR/weekly/YYYY/YYYY-Www.md` 를 찾는다(`WORKLOG_DIR` 기본 `~/worklog`).
+2. weekly 파일이 없으면 그 주의 `daily/` 파일들을 읽어 같은 형식으로 만든다. daily 도 없으면 "그 주 기록이 없습니다 — `/worklog:worklog weekly {날짜}` 를 먼저 실행" 으로 안내하고 끝낸다.
+3. 아래 **Confluence 형식**으로 변환해 출력하고, 그 아래에 weekly 파일 상단의 **한 줄 요약**(캘린더용)을 그대로 붙인다.
+4. AskUserQuestion — `이대로 사용` / `수정 필요` / `캘린더에 적기`. 캘린더는 그 주 월요일 종일 이벤트로 한 줄 요약을 제목 삼아 `gcalcli --calendar "{config.calendar}" add --title "…" --when "{월요일}" --allday --noprompt`, 실패하면 `pbcopy`.
+
+## Confluence 형식
+
+스크린샷으로 확인된 사내 주간 보고 형식이다. 복사해서 그대로 붙일 수 있어야 한다.
+
+```
+- PADO @Jacob Hong
+    - XRPL 증표 반환 기능 (어드민)
+        - 체결 후 매수 기관에 남는 IOU 증표를 발행자에게 되돌리는 Payment, 딜 단위 반환
+        - staging·prod MainNet 실거래 검증
+    - 레포 거래 구현
+        - 레포를 독립 자산 유형으로 추가, 확정 조건 게시(금리·테너·헤어컷·연체 가산)
+        - 환매 자동 실행(포털 스케줄러 → 기관 BE 지시), 실패 시 재시도·디폴트 보류
+    - 정산 레일 후보 리서치(Besu·Arc)
+- Canton @Jacob Hong
+    - 인가 모드·서명 게이트웨이 용어 전환(external/local)
+    - TestNet 화이트리스팅 SV 승인 대기
+- BC Pay @Jacob Hong
+    - card-poc-api API 문서 경로 사무실·VPN IP 제한(WAF 지적 조치)
 ```
 
 규칙:
-- 한 줄 요약은 쉼표+공백으로 잇고 마침표 없음. `*`(별표) 금지.
-- 근거는 항목당 한 줄. 커밋 해시는 적지 않는다(수는 적어도 된다).
-- 활동이 전혀 없는 저장소는 마지막 줄에 이름만.
+- 1단계 = 프로젝트명 + ` @Jacob Hong`(config 의 `confluence.mention`, 없으면 `@Jacob Hong`). 활동 없는 프로젝트는 넣지 않는다.
+- 2단계 = weekly 의 항목 제목에서 영역 대괄호를 떼고 **명사구로** 줄인 것. 괄호로 핵심 수단을 붙여도 된다.
+- 3단계 = 그 항목의 설명 문장에서 **무엇을 했는지만** 1~3줄. "왜"와 판단은 넣지 않는다(Confluence 독자는 팀이고 이유는 ADR 에 있다). 한 줄이면 3단계를 생략하고 2단계에 괄호로 넣는다.
+- 들여쓰기 4칸, `-` 불릿, 마침표 없음, `*` 금지, 커밋 해시·수치 없음.
+- 회의·행사·외부 대응처럼 git 에 없는 항목(예: "Bridge Seoul 2026 STAFF 참여")은 자동으로 못 잡으므로 출력 끝에 "git 에 없는 항목(행사·회의·외부 대응)은 직접 추가" 한 줄을 남긴다.
+- 전주 Confluence 페이지와 중복되는 "대기 중" 항목(화이트리스팅 승인 등)은 상태가 그대로면 그대로 적는다 — 진행 중임을 보이는 용도다.
 
-### Step 5: 확인과 캘린더 기록(선택)
+## 한 줄 요약 (캘린더)
 
-**AskUserQuestion**: "이대로 쓸까요?" — `이대로 사용` / `수정 필요` / `캘린더에 적기` / `worklog 에 기록`.
-
-- `수정 필요`: 요청을 받아 Step 3~4 를 다시 한다.
-- `worklog 에 기록`: 확정된 항목·근거를 `/worklog:worklog weekly {월요일}` 의 파일 형식(`weekly/YYYY/YYYY-Www.md` — 불릿+태그, 판단 하이라이트, 근거)으로 `$WORKLOG_DIR` 에 쓰고 `redact-check.sh` 통과 후 커밋·푸시한다. 형식은 worklog 스킬의 "weekly" 절이 정답이다.
-- `캘린더에 적기`: 해당 주 **월요일 종일 이벤트**로 한 줄 요약을 제목으로 만든다. `calendar` 설정값 사용.
-  ```bash
-  gcalcli --calendar "{calendar}" add --title "{한 줄 요약}" --when "{월요일}" --allday --noprompt
-  ```
-  gcalcli 가 없거나 실패하면 Google Calendar MCP `create_event`(ToolSearch 로 로드)로 대체하고, 그것도 없으면 요약을 `pbcopy` 에 넣고 안내한다.
-
-## 예외 처리
-
-- 저장소 경로가 없음: 건너뛰고 결과 마지막 줄에 표시.
-- 기간에 커밋·문서·세션이 하나도 없음: "이 주에 수집된 활동이 없습니다" 와 기간을 출력하고 종료.
-- `git_author` 가 어느 저장소에서도 매칭되지 않음: `git log --format=%an | sort -u` 로 실제 작성자 이름을 보여 주고 설정 수정을 안내.
+weekly 파일 3행의 `> …` 인용문을 그대로. 없으면 Confluence 2단계 항목들을 쉼표로 이어 만든다. 마침표 없음, `*` 금지.

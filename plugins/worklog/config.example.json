@@ -78,5 +78,8 @@
       "channel_name": "team-channel",
       "thread_keyword": "FE Daily"
     }
+  },
+  "confluence": {
+    "mention": "@Your Name"
   }
 }
