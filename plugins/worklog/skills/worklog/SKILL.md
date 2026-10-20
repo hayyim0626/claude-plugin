@@ -14,6 +14,7 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 - 기록 저장소: `$WORKLOG_DIR` (기본 `~/worklog`). 설정은 `$WORKLOG_DIR/config.json` — `repos[]`(경로·프로젝트명·저장소별 `doc_dirs`), `doc_dirs`, `sessions`, `allowed_emails`.
 - 스크립트: `${CLAUDE_PLUGIN_ROOT}/scripts/collect.sh SINCE UNTIL [--status] [--no-sessions]`, `${CLAUDE_PLUGIN_ROOT}/scripts/redact-check.sh [files]`.
 - 상태: `$WORKLOG_DIR/.state/last_checked` — catchup 이 마지막으로 검사한 날짜(YYYY-MM-DD).
+- 휴무 장부: `$WORKLOG_DIR/days-off.md` — 평일인데 daily 가 없는 날의 이유. 한 줄에 한 날짜, `- YYYY-MM-DD (요일) 종류 사유` 꼴, 연도별 `## YYYY` 절 아래 날짜순. 종류는 `공휴일` `연차` `반차` `병가` `워크숍`. 반차는 daily 가 있을 수 있다.
 - 파일 규칙은 `$WORKLOG_DIR/README.md` 가 정답이다. 처음 실행이면 먼저 읽는다.
 
 ## 인자
@@ -72,7 +73,7 @@ python3 -c "import datetime as d; x=d.date.fromisoformat('$D'); m=x-d.timedelta(
 ### daily [YYYY-MM-DD] (기본 어제)
 
 1. `collect.sh D D --status` 실행(`--status` 는 D 가 오늘일 때만 의미 있다).
-2. 커밋·문서·세션이 전부 비어 있으면 **파일을 만들지 않고** "활동 없음"만 알린다.
+2. 커밋·문서·세션이 전부 비어 있으면 **파일을 만들지 않고** "활동 없음"만 알린다. 그 날짜가 평일이면 `days-off.md` 를 Grep 해서 있으면 "휴무(사유)", 없으면 "미확인 — 휴무였으면 days-off.md 에 적을 것" 이라고 함께 알린다. 대화형이면 AskUserQuestion 으로 종류를 묻고(`공휴일` / `연차` / `반차` / `그냥 활동 없음`) 휴무면 장부에 추가한다.
 3. ADR·PRD 변경이 있으면 판단 추출 규칙 1 대로 파일을 읽는다.
 4. `daily/YYYY/MM/YYYY-MM-DD.md` 를 아래 형식으로 쓴다. 한 일은 커밋 하나하나가 아니라 **기능·주제 단위**로 묶는다(PRD·report 제목이 출발점). 잔손질 fix 는 상위 작업에 흡수. 하루 3~7항목.
 5. `projects` 모드는 자동으로 부르지 않는다(수동 실행). 근거 절에 ADR·PRD 추가가 있으면 마지막 출력에 "projects 실행 권장: ADR-00NN …" 한 줄을 남긴다.
@@ -118,9 +119,10 @@ python3 -c "import datetime as d; x=d.date.fromisoformat('$D'); m=x-d.timedelta(
 
 1. 그 주의 `daily/` 파일을 모두 읽는다(Glob). 이것이 1차 재료다.
 2. daily 가 없는 날짜 구간은 `collect.sh 시작 끝`(세션 포함)으로 직접 수집한다 — `this` 로 돌리는 금요일은 금요일 하루가 여기 해당한다. daily 가 있는 구간은 `collect.sh 월 일 --no-sessions` 로 커밋·문서만 보정한다. daily 가 하나도 없으면 판단 하이라이트는 판단 추출 규칙(문서·커밋 이유)으로 직접 뽑는다. 커밋·문서·세션이 전부 비어 있으면 파일을 만들지 않는다. 이미 파일이 있으면 덮어쓴다(금요일 판을 월요일 catchup 이 다시 만들지는 않는다 — catchup 은 없는 파일만 만든다).
-3. 작업 단위로 묶는다 — **3~7개**. 회의·잔손질·다른 사람 커밋은 뺀다. 코드 없어도 결정·검증·문의는 넣는다. 8개가 넘으면 상위 주제로 다시 묶는다. 프로젝트가 둘 이상이면 프로젝트 소제목으로 나눈다.
-4. 제목 바로 아래에 **한 줄 요약**을 인용문으로 둔다 — 종이 캘린더에 그대로 옮겨 적는 줄이다. 항목마다 `{무엇}({핵심 수단·범위})` 꼴 명사구, 쉼표+공백으로 잇고 마침표 없음, 프로젝트명은 구분이 필요할 때만 앞에. 예: `PADO XRPL 병행 레그 구축(PermissionedDEX), 토스증권 국내주식 실시간 가격 API 연동, RFQ 화면·거래 벤치마크 아티팩트 작성, VASP 규제 대응을 위한 Turnkey 기술검증`
-5. `weekly/YYYY/YYYY-Www.md`:
+3. `days-off.md` 에서 그 주 날짜를 Grep 해 근거 절에 `휴무: 10-09(금) 한글날, 10-12(월) 연차` 한 줄로 적는다. 휴무가 없으면 줄을 뺀다. 휴무 일수만큼 작업 수가 적어도 더 묶거나 채우지 않는다.
+4. 작업 단위로 묶는다 — **3~7개**. 회의·잔손질·다른 사람 커밋은 뺀다. 코드 없어도 결정·검증·문의는 넣는다. 8개가 넘으면 상위 주제로 다시 묶는다. 프로젝트가 둘 이상이면 프로젝트 소제목으로 나눈다.
+5. 제목 바로 아래에 **한 줄 요약**을 인용문으로 둔다 — 종이 캘린더에 그대로 옮겨 적는 줄이다. 항목마다 `{무엇}({핵심 수단·범위})` 꼴 명사구, 쉼표+공백으로 잇고 마침표 없음, 프로젝트명은 구분이 필요할 때만 앞에. 예: `PADO XRPL 병행 레그 구축(PermissionedDEX), 토스증권 국내주식 실시간 가격 API 연동, RFQ 화면·거래 벤치마크 아티팩트 작성, VASP 규제 대응을 위한 Turnkey 기술검증`
+6. `weekly/YYYY/YYYY-Www.md`:
 
 ```markdown
 # 2026-W23 · 06-01(월) ~ 06-07(일)
@@ -147,13 +149,14 @@ python3 -c "import datetime as d; x=d.date.fromisoformat('$D'); m=x-d.timedelta(
 - 회원 탈퇴 — BC Pay 커밋 5개, PRD 2건, 회원 생애주기 정책 문서
 - 결제 속도 — 커밋 3개, PRD 4건
 - 저장소 활동 없음: PADO, Canton, Wallet, Partner API, Tooling
+- 휴무: 06-03(수) 연차
 ```
 
 판단 하이라이트는 그 주의 판단 중 **이력서에 남을 만한 것 3개 이내**.
 
 ### monthly [YYYY-MM] (기본 지난달)
 
-git 을 다시 훑지 않는다. 그 달의 `weekly/` 파일(주가 두 달에 걸치면 그 달 날짜의 항목만)과 `projects/*.md` 에서 그 달 날짜의 항목을 읽어 `monthly/YYYY/YYYY-MM.md` 를 쓴다. weekly 가 아직 없는 날짜(마지막 영업일 저녁에 이번 달을 쓸 때의 마지막 주)는 그 구간의 `daily/` 로 보충한다. `projects/` 에 그 달 항목이 없으면 "이 달의 결정"은 weekly 의 판단 하이라이트에서 고른다.
+git 을 다시 훑지 않는다. 그 달의 `weekly/` 파일(주가 두 달에 걸치면 그 달 날짜의 항목만)과 `projects/*.md` 에서 그 달 날짜의 항목을 읽어 `monthly/YYYY/YYYY-MM.md` 를 쓴다. weekly 가 아직 없는 날짜(마지막 영업일 저녁에 이번 달을 쓸 때의 마지막 주)는 그 구간의 `daily/` 로 보충한다. `projects/` 에 그 달 항목이 없으면 "이 달의 결정"은 weekly 의 판단 하이라이트에서 고른다. "수치" 절의 휴무 줄은 `days-off.md` 에서 그 달 날짜를 세어 종류별로 적고, 없으면 줄을 뺀다.
 
 ```markdown
 # 2026-06
@@ -178,6 +181,7 @@ git 을 다시 훑지 않는다. 그 달의 `weekly/` 파일(주가 두 달에 �
 
 - 커밋 약 120개 (BC Pay 90, Partner API 25, Design System 5), PRD 30건 안팎
 - 활동 없음: PADO, Canton, Wallet, Tooling
+- 휴무 3일: 공휴일 1 (06-06 현충일), 연차 2
 ```
 
 ### projects [SINCE UNTIL] (기본 어제)
@@ -212,11 +216,12 @@ ADR 이 없는 프로젝트는 `### 2026-01-21 · PRD 파트너 API 게이트웨
 맥북이 꺼져 있던 기간을 메운다. 순서:
 
 1. `LAST=$(cat $WORKLOG_DIR/.state/last_checked)` — 없으면 어제 하루만. `START=LAST+1`, `END=어제`. `START` 가 `END-13` 보다 이르면 `END-13` 으로 자른다(최대 14일).
-2. `START..END` 각 날짜에 대해 `daily/…/날짜.md` 가 없으면 **daily** 를 수행한다(활동 없는 날은 파일 없이 넘어간다). 이미 있으면 건너뛴다.
+2. `START..END` 각 날짜에 대해 `daily/…/날짜.md` 가 없으면 **daily** 를 수행한다(활동 없는 날은 파일 없이 넘어간다). 이미 있으면 건너뛴다. 활동 없는 날이 평일이면 `days-off.md` 를 확인해 **휴무**(장부에 있음)와 **미확인**(장부에 없음)으로 나눠 기억해 둔다.
 3. `START` 가 속한 주부터 `END` 까지, **일요일이 END 이하인 주**마다 `weekly/…/YYYY-Www.md` 가 없으면 **weekly**.
 4. 같은 방식으로 **말일이 END 이하인 달**마다 `monthly/…` 가 없으면 **monthly**.
 5. `.state/last_checked` 에 `END` 를 쓴다.
-6. 마지막에 만든 파일 목록을 한 줄씩 출력한다. 채울 게 없었으면 "채울 것 없음 (last_checked=…)".
+6. 미확인 평일이 있으면: 대화형에서는 날짜마다 AskUserQuestion 으로 종류를 묻고(`공휴일` / `연차` / `반차` / `그냥 활동 없음`) 휴무면 `days-off.md` 에 날짜순으로 끼워 넣는다. `--headless` 에서는 묻지 않고 마지막 출력에 "미확인 평일: 2026-10-12(월), 2026-10-13(화) — 휴무였으면 days-off.md 에 적을 것" 한 줄을 남긴다.
+7. 마지막에 만든 파일 목록을 한 줄씩 출력한다. 채울 게 없었으면 "채울 것 없음 (last_checked=…)".
 
 `--headless` 에서는 AskUserQuestion 을 절대 쓰지 않는다. 커밋도 하지 않는다.
 
